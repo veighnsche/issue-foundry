@@ -92,6 +92,11 @@ def plan_command(
         "--target-runtime",
         help="Preferred runtime or platform for the clean-room rebuild plan.",
     ),
+    preserve_workspace: bool = typer.Option(
+        False,
+        "--preserve-workspace/--cleanup-workspace",
+        help="Keep the checked-out source workspace under the output directory for debugging.",
+    ),
     architecture_constraint: Optional[List[str]] = typer.Option(
         None,
         "--architecture-constraint",
@@ -106,6 +111,7 @@ def plan_command(
         target_framework,
         target_runtime,
         architecture_constraint or (),
+        preserve_workspace,
     )
 
 

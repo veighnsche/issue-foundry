@@ -9,3 +9,7 @@ The first implementation target is documented in [docs/mvp-spec.md](docs/mvp-spe
 ## Input Contract
 
 The operator input rules and target naming behavior are documented in [docs/input-contract.md](docs/input-contract.md).
+
+## Current Planning Flow
+
+The `plan` command currently validates operator input, materializes a source snapshot, and writes a `source-snapshot.json` artifact under `.issue-foundry/artifacts/...` before later investigation stages are added.
