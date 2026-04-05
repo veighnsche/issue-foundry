@@ -69,6 +69,8 @@ The MVP uses a staged investigation pipeline instead of a single scan. The inten
 
 Each stage produces a typed artifact that can be inspected during dry runs.
 
+The detailed stage and artifact contracts are specified in [docs/investigation-workflow.md](investigation-workflow.md).
+
 ## Codex Prompt Model
 
 The MVP uses a multi-prompt pipeline. It should not rely on one generic prompt.
