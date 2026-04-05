@@ -57,12 +57,12 @@ Execution type:
 - deterministic
 
 Stop point:
-- valid to stop here if the repository cannot be fetched or authenticated access is missing
+- valid to stop here and inspect the snapshot metadata before structural inventory begins
 
 ## Stage 2: Repository Inventory
 
 Purpose:
-- create a structural inventory of the repository without inferring product behavior yet
+- create a structural inventory of the repository, including source-derived structural signals, without inferring product behavior yet
 
 Inputs:
 - `source_snapshot`
@@ -76,6 +76,7 @@ Outputs:
 - detected languages
 - manifest files
 - build systems and package managers
+- source-derived structural signals such as detectable public interfaces, entry points, schema surfaces, or exported modules when those signals can be collected deterministically
 - tests, docs, CI files, entry points, and automation signals
 - ignored or skipped path summaries
 
@@ -88,7 +89,7 @@ Stop point:
 ## Stage 3: Readable-Text Extraction
 
 Purpose:
-- extract explanatory text that does not live in source code
+- extract explanatory text and human-authored repository evidence that complements the structural inventory without requiring Codex reasoning
 
 Inputs:
 - `source_snapshot`
@@ -101,7 +102,7 @@ Outputs:
 - detected README files
 - docs directory entries
 - Markdown, reStructuredText, changelogs, ADRs, and plain-text artifacts
-- normalized summaries of feature descriptions, setup steps, API usage, deployment notes, and constraints
+- normalized text blocks describing feature areas, setup steps, API usage, deployment notes, and constraints
 - provenance for each extracted text artifact
 
 Execution type:
