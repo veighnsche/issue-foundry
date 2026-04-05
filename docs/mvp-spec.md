@@ -99,7 +99,7 @@ Issue Foundry must preserve clean-room behavior:
 - do not publish long source excerpts in generated issues
 - do not reproduce copyrighted implementation details verbatim
 - describe behavior, architecture, interfaces, and constraints instead of source text
-- preserve provenance for investigation artifacts without turning those artifacts into copied code
+- preserve provenance for investigation artifacts via permalinks to the source repository snapshot without turning those artifacts into copied code
 
 ## Parity Rules
 
@@ -119,7 +119,7 @@ That means:
 
 - direct pushes to the default branch should be blocked when permissions allow
 - implementation work should flow through issue-linked pull requests
-- merge policy should require pull requests instead of direct commits to `main`, `master`, or the chosen default branch
+- merge policy should require pull requests and validate issue-linking, such as through GitHub Rulesets or GitHub Actions, instead of direct commits to `main`, `master`, or the chosen default branch
 
 ## Success Criteria
 
