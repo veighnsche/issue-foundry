@@ -60,14 +60,17 @@ Codex is the planning engine. GitHub mutations are not delegated to Codex.
 
 The MVP uses a staged investigation pipeline instead of a single scan. The intended stages are:
 
-1. inventory
-2. readable-text extraction
-3. architecture synthesis
-4. behavior inference
-5. interface and operations analysis
-6. planning context assembly
+1. source snapshot
+2. repository inventory
+3. readable-text extraction
+4. architecture synthesis
+5. behavior inference
+6. interface and operations analysis
+7. planning context assembly
 
 Each stage produces a typed artifact that can be inspected during dry runs.
+
+The detailed stage and artifact contracts are specified in [docs/investigation-workflow.md](investigation-workflow.md).
 
 ## Codex Prompt Model
 
