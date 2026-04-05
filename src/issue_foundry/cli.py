@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import typer
 
@@ -51,6 +51,9 @@ def app_callback(
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output-dir",
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
         help="Directory for run artifacts and dry-run output.",
     ),
 ) -> None:
@@ -87,7 +90,7 @@ def plan_command(
 def create_repo_command(
     ctx: typer.Context,
     repository_name: str = typer.Argument(..., help="Destination GitHub repository name."),
-    visibility: str = typer.Option(
+    visibility: Literal["public", "private", "internal"] = typer.Option(
         "public",
         "--visibility",
         help="Repository visibility for the destination repo.",
@@ -103,6 +106,11 @@ def publish_issues_command(
     plan_path: Path = typer.Option(
         ...,
         "--plan-path",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
         help="Path to the generated backlog artifact that will be published.",
     ),
 ) -> None:
