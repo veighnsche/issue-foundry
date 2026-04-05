@@ -6,11 +6,19 @@ import subprocess
 from typing import Any, Literal, Optional, Sequence
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 
 SUPPORTED_GITHUB_HOSTS = {"github.com", "www.github.com"}
-GITHUB_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+GITHUB_OWNER_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+GITHUB_REPO_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+TARGET_REQUEST_FIELD_MAP = {
+    "repository_name": "target_repo_name",
+    "language": "target_language",
+    "framework": "target_framework",
+    "runtime": "target_runtime",
+    "architecture_constraints": "architecture_constraint",
+}
 
 
 class InputValidationError(ValueError):
@@ -57,7 +65,7 @@ class TargetImplementationRequest(BaseModel):
             raise ValueError("Target repository name must not end with .git.")
         if "/" in normalized:
             raise ValueError("Target repository name must not include an owner prefix.")
-        if not GITHUB_NAME_PATTERN.match(normalized):
+        if not GITHUB_REPO_PATTERN.match(normalized):
             raise ValueError(
                 "Target repository name may only contain letters, numbers, periods, underscores, and hyphens."
             )
@@ -118,8 +126,8 @@ def build_planning_input(
             runtime=target_runtime,
             architecture_constraints=architecture_constraints,
         )
-    except ValueError as exc:
-        raise InputValidationError(str(exc), field="target_repo_name") from exc
+    except ValidationError as exc:
+        raise _map_target_request_validation_error(exc) from exc
 
     return PlanningInput(
         source_repository=source_repository,
@@ -176,7 +184,7 @@ def parse_source_repository_url(raw_url: str) -> tuple[str, str, str]:
         )
 
     owner, name = segments
-    if not GITHUB_NAME_PATTERN.match(owner) or not GITHUB_NAME_PATTERN.match(name):
+    if not GITHUB_OWNER_PATTERN.match(owner) or not GITHUB_REPO_PATTERN.match(name):
         raise InputValidationError(
             "Source repository URL contains an invalid owner or repository name.",
             field="source_repo",
@@ -245,3 +253,24 @@ def _run_gh_json(gh_path: str, args: Sequence[str]) -> dict[str, Any]:
             "GitHub CLI returned invalid JSON while inspecting the source repository.",
             field="source_repo",
         ) from exc
+
+
+def _map_target_request_validation_error(exc: ValidationError) -> InputValidationError:
+    errors = exc.errors()
+    if not errors:
+        return InputValidationError("Invalid target implementation request.", field="target_repo_name")
+
+    formatted_errors: list[str] = []
+    cli_fields: list[str] = []
+
+    for error in errors:
+        loc = error.get("loc") or ()
+        model_field = str(loc[0]) if loc else "repository_name"
+        cli_field = TARGET_REQUEST_FIELD_MAP.get(model_field, model_field)
+        message = error.get("msg", "Invalid value.")
+        formatted_errors.append(f"{cli_field}: {message}")
+        if cli_field not in cli_fields:
+            cli_fields.append(cli_field)
+
+    field = cli_fields[0] if len(cli_fields) == 1 else "target_request"
+    return InputValidationError("; ".join(formatted_errors), field=field)

@@ -65,6 +65,19 @@ def test_build_planning_input_rejects_non_root_repo_paths() -> None:
         )
 
 
+def test_build_planning_input_rejects_invalid_owner_characters() -> None:
+    with pytest.raises(InputValidationError, match="invalid owner or repository name"):
+        build_planning_input(
+            gh_path="gh",
+            source_repo="https://github.com/open_ai/gym",
+            target_repo_name=None,
+            target_language=None,
+            target_framework=None,
+            target_runtime=None,
+            architecture_constraints=(),
+        )
+
+
 def test_build_planning_input_rejects_invalid_target_repo_name(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run_gh_json(gh_path: str, args: list[str]) -> dict[str, object]:
         return {
@@ -78,7 +91,7 @@ def test_build_planning_input_rejects_invalid_target_repo_name(monkeypatch: pyte
 
     monkeypatch.setattr("issue_foundry.inputs._run_gh_json", fake_run_gh_json)
 
-    with pytest.raises(InputValidationError, match="Target repository name may only contain"):
+    with pytest.raises(InputValidationError, match="target_repo_name: Value error, Target repository name may only contain") as exc:
         build_planning_input(
             gh_path="gh",
             source_repo="https://github.com/openai/gym",
@@ -88,3 +101,5 @@ def test_build_planning_input_rejects_invalid_target_repo_name(monkeypatch: pyte
             target_runtime=None,
             architecture_constraints=(),
         )
+
+    assert exc.value.field == "target_repo_name"
