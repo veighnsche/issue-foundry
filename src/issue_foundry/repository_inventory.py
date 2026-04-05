@@ -164,7 +164,7 @@ def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> Persiste
     for relative_file in _iter_inventory_files(workspace_path):
         total_files += 1
         file_name = relative_file.name
-        directory_key = relative_file.parent.as_posix() if relative_file.parent != Path(".") else "."
+        directory_key = relative_file.parent.as_posix()
         extension_key = relative_file.suffix.lower() or "<none>"
 
         directory_counts[directory_key] += 1
@@ -176,7 +176,6 @@ def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> Persiste
 
         relative_path_text = relative_file.as_posix()
         lower_name = file_name.lower()
-        lower_path = relative_path_text.lower()
 
         if lower_name.startswith("readme"):
             readme_files.append(relative_path_text)
@@ -201,9 +200,6 @@ def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> Persiste
         if file_name in MANIFEST_FILES:
             manifest_files.append(relative_path_text)
             build_systems.update(BUILD_SYSTEMS_BY_FILE.get(file_name, ()))
-            package_managers.update(PACKAGE_MANAGERS_BY_FILE.get(file_name, ()))
-
-        if lower_path.endswith("pnpm-lock.yaml") or lower_path.endswith("yarn.lock"):
             package_managers.update(PACKAGE_MANAGERS_BY_FILE.get(file_name, ()))
 
     artifact = RepositoryInventoryArtifact(
@@ -288,13 +284,13 @@ def _iter_inventory_files(workspace_path: Path) -> Iterable[Path]:
 
         kept_dirnames: list[str] = []
         for dirname in sorted(dirnames):
-            relative_dir = Path(dirname) if relative_root == Path(".") else relative_root / dirname
+            relative_dir = relative_root / dirname
             if not should_ignore_snapshot_path(relative_dir):
                 kept_dirnames.append(dirname)
         dirnames[:] = kept_dirnames
 
         for filename in sorted(filenames):
-            relative_file = Path(filename) if relative_root == Path(".") else relative_root / filename
+            relative_file = relative_root / filename
             if not should_ignore_snapshot_path(relative_file):
                 yield relative_file
 
