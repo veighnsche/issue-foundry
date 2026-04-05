@@ -40,6 +40,7 @@ def test_build_repository_inventory_persists_structural_artifact(tmp_path: Path)
         assert persisted_inventory.artifact.ci_files == (".github/workflows/ci.yml",)
         assert persisted_inventory.artifact.entry_points == ("src/app.py", "src/main.py")
         assert "node_modules/" in persisted_inventory.artifact.skipped_paths
+        assert persisted_inventory.artifact.skipped_paths == snapshot.artifact.ignored_paths
 
         payload = json.loads(persisted_inventory.artifact_path.read_text(encoding="utf-8"))
         assert payload["analyzed_commit_sha"] == commit_sha

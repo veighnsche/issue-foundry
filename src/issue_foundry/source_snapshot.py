@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 from contextlib import contextmanager
@@ -14,30 +13,13 @@ from pydantic import BaseModel, ConfigDict
 
 from issue_foundry.config import IssueFoundrySettings
 from issue_foundry.inputs import SourceRepositoryInput
-
-
-IGNORED_PATH_PARTS = frozenset(
-    {
-        ".git",
-        ".hg",
-        ".svn",
-        ".venv",
-        ".yarn",
-        "__pycache__",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".tox",
-        "build",
-        "coverage",
-        "dist",
-        "node_modules",
-        "target",
-        "vendor",
-        "venv",
-    }
+from issue_foundry.workspace_tree import (
+    IGNORED_FILE_NAMES,
+    IGNORED_PATH_PARTS,
+    WorkspaceTree,
+    scan_workspace_tree,
+    should_ignore_repository_path,
 )
-IGNORED_FILE_NAMES = frozenset({".DS_Store"})
 
 
 class SourceSnapshotError(RuntimeError):
@@ -53,7 +35,7 @@ class SourceSnapshotArtifact(BaseModel):
     resolved_ref: str
     commit_sha: str
     fetched_at: datetime
-    workspace_path: str
+    workspace_path: Optional[str]
     workspace_retained: bool
     ignore_rules: tuple[str, ...]
     ignored_paths: tuple[str, ...]
@@ -66,6 +48,7 @@ class MaterializedSourceSnapshot:
     artifact: SourceSnapshotArtifact
     artifact_path: Path
     workspace_path: Path
+    workspace_tree: WorkspaceTree
     _temporary_directory: Any = None
 
     def cleanup(self) -> None:
@@ -116,22 +99,23 @@ def create_source_snapshot(
         )
         commit_sha = _run_git_capture(["rev-parse", "HEAD"], cwd=workspace_path)
         fetched_at = datetime.now(timezone.utc)
-        ignored_paths = collect_ignored_paths(workspace_path)
+        workspace_tree = scan_workspace_tree(workspace_path)
         artifact = SourceSnapshotArtifact(
             source_repository=source_repository,
             resolved_ref=resolved_ref,
             commit_sha=commit_sha,
             fetched_at=fetched_at,
-            workspace_path=str(workspace_path),
+            workspace_path=str(workspace_path) if preserve_workspace else None,
             workspace_retained=preserve_workspace,
             ignore_rules=tuple(sorted(IGNORED_PATH_PARTS)) + tuple(sorted(IGNORED_FILE_NAMES)),
-            ignored_paths=ignored_paths,
+            ignored_paths=workspace_tree.skipped_paths,
         )
         artifact_path = write_source_snapshot_artifact(output_dir, artifact)
         return MaterializedSourceSnapshot(
             artifact=artifact,
             artifact_path=artifact_path,
             workspace_path=workspace_path,
+            workspace_tree=workspace_tree,
             _temporary_directory=temporary_directory,
         )
     except Exception:
@@ -151,38 +135,11 @@ def write_source_snapshot_artifact(output_dir: Path, artifact: SourceSnapshotArt
 
 
 def should_ignore_snapshot_path(relative_path: Path) -> bool:
-    if relative_path.name in IGNORED_FILE_NAMES:
-        return True
-
-    return any(part in IGNORED_PATH_PARTS for part in relative_path.parts)
+    return should_ignore_repository_path(relative_path)
 
 
 def collect_ignored_paths(workspace_path: Path, *, limit: int = 200) -> tuple[str, ...]:
-    ignored_paths: list[str] = []
-
-    for current_root, dirnames, filenames in os.walk(workspace_path, topdown=True):
-        root_path = Path(current_root)
-        relative_root = root_path.relative_to(workspace_path)
-
-        kept_dirnames: list[str] = []
-        for dirname in sorted(dirnames):
-            relative_dir = relative_root / dirname
-            if should_ignore_snapshot_path(relative_dir):
-                ignored_paths.append(f"{relative_dir.as_posix()}/")
-                if len(ignored_paths) >= limit:
-                    return tuple(ignored_paths)
-            else:
-                kept_dirnames.append(dirname)
-        dirnames[:] = kept_dirnames
-
-        for filename in sorted(filenames):
-            relative_file = relative_root / filename
-            if should_ignore_snapshot_path(relative_file):
-                ignored_paths.append(relative_file.as_posix())
-                if len(ignored_paths) >= limit:
-                    return tuple(ignored_paths)
-
-    return tuple(ignored_paths)
+    return scan_workspace_tree(workspace_path, skipped_limit=limit).skipped_paths
 
 
 def _allocate_workspace(
