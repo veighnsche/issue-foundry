@@ -12,4 +12,4 @@ The operator input rules and target naming behavior are documented in [docs/inpu
 
 ## Current Planning Flow
 
-The `plan` command currently validates operator input, materializes a source snapshot, and writes a `source-snapshot.json` artifact under `.issue-foundry/artifacts/...` before later investigation stages are added.
+The `plan` command currently validates operator input, materializes a source snapshot, and writes both `source-snapshot.json` and `repository-inventory.json` artifacts under `.issue-foundry/artifacts/...` before later investigation stages are added.

@@ -6,6 +6,7 @@ import typer
 
 from issue_foundry.config import IssueFoundrySettings
 from issue_foundry.inputs import InputValidationError, build_planning_input
+from issue_foundry.repository_inventory import build_repository_inventory
 from issue_foundry.source_snapshot import SourceSnapshotError, materialize_source_snapshot
 
 
@@ -37,6 +38,7 @@ def plan(
             planning_input.source_repository,
             preserve_workspace=preserve_workspace,
         ) as snapshot:
+            repository_inventory = build_repository_inventory(snapshot)
             target_request = planning_input.target_request
 
             typer.echo("Issue Foundry plan scaffold")
@@ -60,9 +62,24 @@ def plan(
             typer.echo(f"snapshot_workspace_retained: {'yes' if snapshot.artifact.workspace_retained else 'no'}")
             typer.echo(f"snapshot_artifact: {snapshot.artifact_path}")
             typer.echo(f"snapshot_ignored_paths: {len(snapshot.artifact.ignored_paths)} matched")
+            typer.echo(f"inventory_total_files: {repository_inventory.artifact.total_files}")
+            typer.echo(
+                "inventory_detected_languages: "
+                + (
+                    ", ".join(repository_inventory.artifact.detected_languages)
+                    if repository_inventory.artifact.detected_languages
+                    else "none"
+                )
+            )
+            typer.echo(f"inventory_manifest_files: {len(repository_inventory.artifact.manifest_files)}")
+            typer.echo(f"inventory_test_files: {len(repository_inventory.artifact.test_files)}")
+            typer.echo(f"inventory_doc_files: {len(repository_inventory.artifact.documentation_files)}")
+            typer.echo(f"inventory_ci_files: {len(repository_inventory.artifact.ci_files)}")
+            typer.echo(f"inventory_entry_points: {len(repository_inventory.artifact.entry_points)}")
+            typer.echo(f"inventory_artifact: {repository_inventory.artifact_path}")
             typer.echo(f"codex_model: {settings.codex_model}")
             typer.echo(f"output_dir: {settings.output_dir}")
-            typer.echo("next_step: wire repository inventory extraction against the snapshot artifact")
+            typer.echo("next_step: wire readable-text extraction against the repository inventory artifact")
     except SourceSnapshotError as exc:
         typer.secho(f"Error: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
