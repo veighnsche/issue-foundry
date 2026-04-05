@@ -6,6 +6,7 @@ import typer
 
 from issue_foundry.config import IssueFoundrySettings
 from issue_foundry.inputs import InputValidationError, build_planning_input
+from issue_foundry.readable_text_evidence import PersistedReadableTextEvidence, build_readable_text_evidence
 from issue_foundry.repository_inventory import PersistedRepositoryInventory, build_repository_inventory
 from issue_foundry.source_snapshot import MaterializedSourceSnapshot
 from issue_foundry.source_snapshot import SourceSnapshotError, materialize_source_snapshot
@@ -40,7 +41,8 @@ def plan(
             preserve_workspace=preserve_workspace,
         ) as snapshot:
             repository_inventory = build_repository_inventory(snapshot)
-            _emit_plan_summary(settings, planning_input, snapshot, repository_inventory)
+            readable_text_evidence = build_readable_text_evidence(snapshot, repository_inventory)
+            _emit_plan_summary(settings, planning_input, snapshot, repository_inventory, readable_text_evidence)
     except SourceSnapshotError as exc:
         typer.secho(f"Error: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
@@ -51,6 +53,7 @@ def _emit_plan_summary(
     planning_input,
     snapshot: MaterializedSourceSnapshot,
     repository_inventory: PersistedRepositoryInventory,
+    readable_text_evidence: PersistedReadableTextEvidence,
 ) -> None:
     target_request = planning_input.target_request
 
@@ -94,6 +97,11 @@ def _emit_plan_summary(
     typer.echo(f"inventory_entry_points: {len(repository_inventory.artifact.entry_points)}")
     typer.echo(f"inventory_skipped_paths: {len(repository_inventory.artifact.skipped_paths)} matched")
     typer.echo(f"inventory_artifact: {repository_inventory.artifact_path}")
+    typer.echo(f"text_evidence_documents: {readable_text_evidence.artifact.total_documents}")
+    typer.echo(f"text_evidence_clues: {readable_text_evidence.artifact.total_clues}")
+    typer.echo(f"text_evidence_commands: {readable_text_evidence.artifact.command_clues}")
+    typer.echo(f"text_evidence_skipped_files: {len(readable_text_evidence.artifact.skipped_files)}")
+    typer.echo(f"text_evidence_artifact: {readable_text_evidence.artifact_path}")
     typer.echo(f"codex_model: {settings.codex_model}")
     typer.echo(f"output_dir: {settings.output_dir}")
-    typer.echo("next_step: wire readable-text extraction against the repository inventory artifact")
+    typer.echo("next_step: wire architecture synthesis against the inventory and readable-text artifacts")
