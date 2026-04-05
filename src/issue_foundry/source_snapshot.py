@@ -157,7 +157,7 @@ def should_ignore_snapshot_path(relative_path: Path) -> bool:
     return any(part in IGNORED_PATH_PARTS for part in relative_path.parts)
 
 
-def collect_ignored_paths(workspace_path: Path, *, limit: int = 25) -> tuple[str, ...]:
+def collect_ignored_paths(workspace_path: Path, *, limit: int = 200) -> tuple[str, ...]:
     ignored_paths: list[str] = []
 
     for current_root, dirnames, filenames in os.walk(workspace_path, topdown=True):
@@ -166,7 +166,7 @@ def collect_ignored_paths(workspace_path: Path, *, limit: int = 25) -> tuple[str
 
         kept_dirnames: list[str] = []
         for dirname in sorted(dirnames):
-            relative_dir = Path(dirname) if relative_root == Path(".") else relative_root / dirname
+            relative_dir = relative_root / dirname
             if should_ignore_snapshot_path(relative_dir):
                 ignored_paths.append(f"{relative_dir.as_posix()}/")
                 if len(ignored_paths) >= limit:
@@ -176,7 +176,7 @@ def collect_ignored_paths(workspace_path: Path, *, limit: int = 25) -> tuple[str
         dirnames[:] = kept_dirnames
 
         for filename in sorted(filenames):
-            relative_file = Path(filename) if relative_root == Path(".") else relative_root / filename
+            relative_file = relative_root / filename
             if should_ignore_snapshot_path(relative_file):
                 ignored_paths.append(relative_file.as_posix())
                 if len(ignored_paths) >= limit:
