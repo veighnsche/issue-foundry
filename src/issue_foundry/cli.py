@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 import typer
 
@@ -72,6 +72,11 @@ def app_callback(
 def plan_command(
     ctx: typer.Context,
     source_repo: str = typer.Argument(..., help="Public GitHub repository URL to investigate."),
+    target_repo_name: Optional[str] = typer.Option(
+        None,
+        "--target-repo-name",
+        help="Explicit destination repository name. Defaults to <source-repo>-clean-room.",
+    ),
     target_language: Optional[str] = typer.Option(
         None,
         "--target-language",
@@ -82,8 +87,26 @@ def plan_command(
         "--target-framework",
         help="Preferred framework for the clean-room rebuild plan.",
     ),
+    target_runtime: Optional[str] = typer.Option(
+        None,
+        "--target-runtime",
+        help="Preferred runtime or platform for the clean-room rebuild plan.",
+    ),
+    architecture_constraint: Optional[List[str]] = typer.Option(
+        None,
+        "--architecture-constraint",
+        help="Repeatable architectural constraints that should shape the implementation backlog.",
+    ),
 ) -> None:
-    plan(get_state(ctx).settings, source_repo, target_language, target_framework)
+    plan(
+        get_state(ctx).settings,
+        source_repo,
+        target_repo_name,
+        target_language,
+        target_framework,
+        target_runtime,
+        architecture_constraint or (),
+    )
 
 
 @app.command("create-repo")

@@ -14,8 +14,16 @@ dependencies = [
   "typer>=0.12,<1",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2,<9",
+]
+
 [project.scripts]
 issue-foundry = "issue_foundry.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/issue_foundry"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
