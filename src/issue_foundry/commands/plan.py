@@ -6,7 +6,8 @@ import typer
 
 from issue_foundry.config import IssueFoundrySettings
 from issue_foundry.inputs import InputValidationError, build_planning_input
-from issue_foundry.repository_inventory import build_repository_inventory
+from issue_foundry.repository_inventory import PersistedRepositoryInventory, build_repository_inventory
+from issue_foundry.source_snapshot import MaterializedSourceSnapshot
 from issue_foundry.source_snapshot import SourceSnapshotError, materialize_source_snapshot
 
 
@@ -39,47 +40,60 @@ def plan(
             preserve_workspace=preserve_workspace,
         ) as snapshot:
             repository_inventory = build_repository_inventory(snapshot)
-            target_request = planning_input.target_request
-
-            typer.echo("Issue Foundry plan scaffold")
-            typer.echo(f"source_repo: {planning_input.source_repository.full_name}")
-            typer.echo(f"source_url: {planning_input.source_repository.canonical_url}")
-            typer.echo(f"default_branch: {planning_input.source_repository.default_branch}")
-            typer.echo(f"display_name: {planning_input.source_repository.display_name}")
-            typer.echo(f"target_repository_name: {target_request.repository_name}")
-            typer.echo(f"target_repository_name_source: {target_request.repository_name_source}")
-            typer.echo(f"target_language: {target_request.language or 'source-aligned defaults'}")
-            typer.echo(f"target_framework: {target_request.framework or 'source-aligned defaults'}")
-            typer.echo(f"target_runtime: {target_request.runtime or 'source-aligned defaults'}")
-            typer.echo(
-                "architecture_constraints: "
-                + (", ".join(target_request.architecture_constraints) if target_request.architecture_constraints else "none")
-            )
-            typer.echo(f"snapshot_commit_sha: {snapshot.artifact.commit_sha}")
-            typer.echo(f"snapshot_resolved_ref: {snapshot.artifact.resolved_ref}")
-            typer.echo(f"snapshot_fetched_at: {snapshot.artifact.fetched_at.isoformat()}")
-            typer.echo(f"snapshot_workspace: {snapshot.workspace_path}")
-            typer.echo(f"snapshot_workspace_retained: {'yes' if snapshot.artifact.workspace_retained else 'no'}")
-            typer.echo(f"snapshot_artifact: {snapshot.artifact_path}")
-            typer.echo(f"snapshot_ignored_paths: {len(snapshot.artifact.ignored_paths)} matched")
-            typer.echo(f"inventory_total_files: {repository_inventory.artifact.total_files}")
-            typer.echo(
-                "inventory_detected_languages: "
-                + (
-                    ", ".join(repository_inventory.artifact.detected_languages)
-                    if repository_inventory.artifact.detected_languages
-                    else "none"
-                )
-            )
-            typer.echo(f"inventory_manifest_files: {len(repository_inventory.artifact.manifest_files)}")
-            typer.echo(f"inventory_test_files: {len(repository_inventory.artifact.test_files)}")
-            typer.echo(f"inventory_doc_files: {len(repository_inventory.artifact.documentation_files)}")
-            typer.echo(f"inventory_ci_files: {len(repository_inventory.artifact.ci_files)}")
-            typer.echo(f"inventory_entry_points: {len(repository_inventory.artifact.entry_points)}")
-            typer.echo(f"inventory_artifact: {repository_inventory.artifact_path}")
-            typer.echo(f"codex_model: {settings.codex_model}")
-            typer.echo(f"output_dir: {settings.output_dir}")
-            typer.echo("next_step: wire readable-text extraction against the repository inventory artifact")
+            _emit_plan_summary(settings, planning_input, snapshot, repository_inventory)
     except SourceSnapshotError as exc:
         typer.secho(f"Error: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
+
+
+def _emit_plan_summary(
+    settings: IssueFoundrySettings,
+    planning_input,
+    snapshot: MaterializedSourceSnapshot,
+    repository_inventory: PersistedRepositoryInventory,
+) -> None:
+    target_request = planning_input.target_request
+
+    typer.echo("Issue Foundry plan scaffold")
+    typer.echo(f"source_repo: {planning_input.source_repository.full_name}")
+    typer.echo(f"source_url: {planning_input.source_repository.canonical_url}")
+    typer.echo(f"default_branch: {planning_input.source_repository.default_branch}")
+    typer.echo(f"display_name: {planning_input.source_repository.display_name}")
+    typer.echo(f"target_repository_name: {target_request.repository_name}")
+    typer.echo(f"target_repository_name_source: {target_request.repository_name_source}")
+    typer.echo(f"target_language: {target_request.language or 'source-aligned defaults'}")
+    typer.echo(f"target_framework: {target_request.framework or 'source-aligned defaults'}")
+    typer.echo(f"target_runtime: {target_request.runtime or 'source-aligned defaults'}")
+    typer.echo(
+        "architecture_constraints: "
+        + (", ".join(target_request.architecture_constraints) if target_request.architecture_constraints else "none")
+    )
+    typer.echo(f"snapshot_commit_sha: {snapshot.artifact.commit_sha}")
+    typer.echo(f"snapshot_resolved_ref: {snapshot.artifact.resolved_ref}")
+    typer.echo(f"snapshot_fetched_at: {snapshot.artifact.fetched_at.isoformat()}")
+    if snapshot.artifact.workspace_path is not None:
+        typer.echo(f"snapshot_workspace: {snapshot.artifact.workspace_path}")
+    else:
+        typer.echo("snapshot_workspace: temporary workspace cleaned after run")
+    typer.echo(f"snapshot_workspace_retained: {'yes' if snapshot.artifact.workspace_retained else 'no'}")
+    typer.echo(f"snapshot_artifact: {snapshot.artifact_path}")
+    typer.echo(f"snapshot_ignored_paths: {len(snapshot.artifact.ignored_paths)} matched")
+    typer.echo(f"inventory_total_files: {repository_inventory.artifact.total_files}")
+    typer.echo(
+        "inventory_detected_languages: "
+        + (
+            ", ".join(repository_inventory.artifact.detected_languages)
+            if repository_inventory.artifact.detected_languages
+            else "none"
+        )
+    )
+    typer.echo(f"inventory_manifest_files: {len(repository_inventory.artifact.manifest_files)}")
+    typer.echo(f"inventory_test_files: {len(repository_inventory.artifact.test_files)}")
+    typer.echo(f"inventory_doc_files: {len(repository_inventory.artifact.documentation_files)}")
+    typer.echo(f"inventory_ci_files: {len(repository_inventory.artifact.ci_files)}")
+    typer.echo(f"inventory_entry_points: {len(repository_inventory.artifact.entry_points)}")
+    typer.echo(f"inventory_skipped_paths: {len(repository_inventory.artifact.skipped_paths)} matched")
+    typer.echo(f"inventory_artifact: {repository_inventory.artifact_path}")
+    typer.echo(f"codex_model: {settings.codex_model}")
+    typer.echo(f"output_dir: {settings.output_dir}")
+    typer.echo("next_step: wire readable-text extraction against the repository inventory artifact")

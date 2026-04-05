@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import os
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 from pydantic import BaseModel, ConfigDict
 
-from issue_foundry.source_snapshot import MaterializedSourceSnapshot, should_ignore_snapshot_path
+from issue_foundry.source_snapshot import MaterializedSourceSnapshot
+from issue_foundry.workspace_tree import scan_workspace_tree
 
 
 LANGUAGE_BY_EXTENSION = {
@@ -136,6 +135,7 @@ class PersistedRepositoryInventory:
 
 def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> PersistedRepositoryInventory:
     workspace_path = snapshot.workspace_path
+    workspace_tree = scan_workspace_tree(workspace_path)
     extension_counts: Counter[str] = Counter()
     directory_counts: Counter[str] = Counter()
     language_counts: Counter[str] = Counter()
@@ -147,21 +147,11 @@ def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> Persiste
     ci_files: list[str] = []
     automation_files: list[str] = []
     entry_points: list[str] = []
-    top_level_directories: list[str] = []
-    top_level_files: list[str] = []
     package_managers: set[str] = set()
     build_systems: set[str] = set()
 
-    for child in sorted(workspace_path.iterdir(), key=lambda path: path.name):
-        if should_ignore_snapshot_path(Path(child.name)):
-            continue
-        if child.is_dir():
-            top_level_directories.append(child.name)
-        else:
-            top_level_files.append(child.name)
-
     total_files = 0
-    for relative_file in _iter_inventory_files(workspace_path):
+    for relative_file in workspace_tree.files:
         total_files += 1
         file_name = relative_file.name
         directory_key = relative_file.parent.as_posix()
@@ -206,8 +196,8 @@ def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> Persiste
         source_snapshot_artifact_path=str(snapshot.artifact_path),
         analyzed_commit_sha=snapshot.artifact.commit_sha,
         total_files=total_files,
-        top_level_directories=tuple(top_level_directories),
-        top_level_files=tuple(top_level_files),
+        top_level_directories=workspace_tree.top_level_directories,
+        top_level_files=workspace_tree.top_level_files,
         file_counts_by_extension=_sorted_counter_dict(extension_counts),
         file_counts_by_directory=_sorted_counter_dict(directory_counts),
         language_file_counts=_sorted_counter_dict(language_counts),
@@ -222,7 +212,7 @@ def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> Persiste
         ci_files=tuple(sorted(ci_files)),
         automation_files=tuple(sorted(set(automation_files))),
         entry_points=tuple(sorted(set(entry_points))),
-        skipped_paths=snapshot.artifact.ignored_paths,
+        skipped_paths=workspace_tree.skipped_paths,
     )
 
     artifact_path = write_repository_inventory_artifact(snapshot, artifact)
@@ -275,24 +265,6 @@ def is_entry_point(relative_file: Path) -> bool:
     if relative_file.name in ENTRY_POINT_FILE_NAMES:
         return True
     return bool(relative_file.parts) and relative_file.parts[0] in ENTRY_POINT_DIRECTORIES
-
-
-def _iter_inventory_files(workspace_path: Path) -> Iterable[Path]:
-    for current_root, dirnames, filenames in os.walk(workspace_path, topdown=True):
-        root_path = Path(current_root)
-        relative_root = root_path.relative_to(workspace_path)
-
-        kept_dirnames: list[str] = []
-        for dirname in sorted(dirnames):
-            relative_dir = relative_root / dirname
-            if not should_ignore_snapshot_path(relative_dir):
-                kept_dirnames.append(dirname)
-        dirnames[:] = kept_dirnames
-
-        for filename in sorted(filenames):
-            relative_file = relative_root / filename
-            if not should_ignore_snapshot_path(relative_file):
-                yield relative_file
 
 
 def _sorted_counter_dict(counter: Counter[str]) -> dict[str, int]:

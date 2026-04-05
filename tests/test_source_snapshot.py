@@ -28,10 +28,12 @@ def test_materialize_source_snapshot_cleans_temp_workspace(tmp_path: Path) -> No
         assert snapshot.artifact.commit_sha == commit_sha
         assert snapshot.artifact.resolved_ref == "main"
         assert snapshot.artifact.workspace_retained is False
+        assert snapshot.artifact.workspace_path is None
         assert "node_modules/" in snapshot.artifact.ignored_paths
         artifact_payload = json.loads(snapshot.artifact_path.read_text(encoding="utf-8"))
         assert artifact_payload["commit_sha"] == commit_sha
         assert artifact_payload["resolved_ref"] == "main"
+        assert artifact_payload["workspace_path"] is None
 
     assert not snapshot.workspace_path.exists()
 
@@ -46,6 +48,7 @@ def test_materialize_source_snapshot_preserves_workspace_when_requested(tmp_path
         assert preserved_workspace.exists()
         assert snapshot.artifact.commit_sha == commit_sha
         assert snapshot.artifact.workspace_retained is True
+        assert snapshot.artifact.workspace_path == str(preserved_workspace)
 
     assert preserved_workspace.exists()
     shutil.rmtree(preserved_workspace)
