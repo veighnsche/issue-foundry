@@ -13,7 +13,13 @@ from pydantic import BaseModel, ConfigDict
 
 from issue_foundry.config import IssueFoundrySettings
 from issue_foundry.inputs import SourceRepositoryInput
-from issue_foundry.workspace_tree import IGNORED_FILE_NAMES, IGNORED_PATH_PARTS, scan_workspace_tree
+from issue_foundry.workspace_tree import (
+    IGNORED_FILE_NAMES,
+    IGNORED_PATH_PARTS,
+    WorkspaceTree,
+    scan_workspace_tree,
+    should_ignore_repository_path,
+)
 
 
 class SourceSnapshotError(RuntimeError):
@@ -42,6 +48,7 @@ class MaterializedSourceSnapshot:
     artifact: SourceSnapshotArtifact
     artifact_path: Path
     workspace_path: Path
+    workspace_tree: WorkspaceTree
     _temporary_directory: Any = None
 
     def cleanup(self) -> None:
@@ -108,6 +115,7 @@ def create_source_snapshot(
             artifact=artifact,
             artifact_path=artifact_path,
             workspace_path=workspace_path,
+            workspace_tree=workspace_tree,
             _temporary_directory=temporary_directory,
         )
     except Exception:
@@ -127,8 +135,6 @@ def write_source_snapshot_artifact(output_dir: Path, artifact: SourceSnapshotArt
 
 
 def should_ignore_snapshot_path(relative_path: Path) -> bool:
-    from issue_foundry.workspace_tree import should_ignore_repository_path
-
     return should_ignore_repository_path(relative_path)
 
 

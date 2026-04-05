@@ -7,7 +7,6 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from issue_foundry.source_snapshot import MaterializedSourceSnapshot
-from issue_foundry.workspace_tree import scan_workspace_tree
 
 
 LANGUAGE_BY_EXTENSION = {
@@ -134,8 +133,7 @@ class PersistedRepositoryInventory:
 
 
 def build_repository_inventory(snapshot: MaterializedSourceSnapshot) -> PersistedRepositoryInventory:
-    workspace_path = snapshot.workspace_path
-    workspace_tree = scan_workspace_tree(workspace_path)
+    workspace_tree = snapshot.workspace_tree
     extension_counts: Counter[str] = Counter()
     directory_counts: Counter[str] = Counter()
     language_counts: Counter[str] = Counter()
